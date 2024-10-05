@@ -1,0 +1,80 @@
+use crate::ast::*;
+use std::str::FromStr;
+
+grammar;
+
+pub Program: Vec<Def> = <Def*>;
+
+Def: Def =
+    <name:ID> COLON <branches:Branch+> SEMICOLON => Def { name: name.to_string(), branches };
+
+Branch: (Pattern, Expr) =
+    <p:Pattern> ARROW <e:Expr> SEMICOLON => (p, e);
+
+Pattern: Pattern = {
+    #[precedence(level="0")]
+    LPAREN <Pattern> RPAREN,
+    <NUMBER> => Pattern::Number(f64::from_str(<>).unwrap()),
+    <CHAR> => Pattern::Char(<>.chars().next().unwrap()),
+    TRUE => Pattern::Bool(true),
+    FALSE => Pattern::Bool(false),
+    WILDCARD => Pattern::Wildcard,
+    NIL => Pattern::Nil,
+    <ID> => Pattern::Named(<>.to_string()),
+    #[precedence(level="1")] #[assoc(side="right")]
+    <l:Pattern> COMMA <r:Pattern> => Pattern::Cons(Box::new(l), Box::new(r)),
+}
+
+Expr: Expr = {
+    #[precedence(level="0")]
+    LPAREN <Expr> RPAREN,
+    <loc:@L> <n:NUMBER> => Expr::Number(f64::from_str(n).unwrap(), loc),
+    <loc:@L> <c:CHAR> => Expr::Char(c.chars().next().unwrap(), loc),
+    <loc:@L> <s:STRING> => Expr::String(s.to_string(), loc),
+    <loc:@L> <i:ID> => Expr::Named(i.to_string(), loc),
+    <loc:@L> TRUE => Expr::Bool(true, loc),
+    <loc:@L> FALSE => Expr::Bool(false, loc),
+    <loc:@L> NIL => Expr::Nil(loc),
+    #[precedence(level="1")] #[assoc(side="left")]
+    <l:Expr> <loc:@L> STAR <r:Expr> => Expr::Binary { lhs: Box::new(l), rhs: Box::new(r), op: Op::Multiply, loc },
+    <l:Expr> <loc:@L> SLASH <r:Expr> => Expr::Binary { lhs: Box::new(l), rhs: Box::new(r), op: Op::Divide, loc },
+    #[precedence(level="2")] #[assoc(side="left")]
+    <l:Expr> <loc:@L> PLUS <r:Expr> => Expr::Binary { lhs: Box::new(l), rhs: Box::new(r), op: Op::Add, loc },
+    <l:Expr> <loc:@L> MINUS <r:Expr> => Expr::Binary { lhs: Box::new(l), rhs: Box::new(r), op: Op::Subtract, loc },
+    #[precedence(level="3")] #[assoc(side="right")]
+    <l:Expr> LPAREN <r:Expr> RPAREN => Expr::Appl(Box::new(l), Box::new(r)),
+    #[precedence(level="4")] #[assoc(side="right")]
+    <l:Expr> <loc:@L> COMMA <r:Expr> => Expr::Binary { lhs: Box::new(l), rhs: Box::new(r), op: Op::Cons, loc },
+    #[precedence(level="5")] #[assoc(side="left")]
+    <l:Expr> <loc:@L> THEN <r:Expr> => Expr::Binary { lhs: Box::new(l), rhs: Box::new(r), op: Op::Then, loc },
+};
+
+match {
+    r"#[^\n\r]*[\n\r]*" => { },
+    r"\s+" => { },
+
+    r"[0-9]+(\.[0-9]+)?" => NUMBER,
+    r"'.'" => CHAR,
+    r#"\"[^\"]+\""# => STRING,
+
+    "(" => LPAREN,
+    ")" => RPAREN,
+    "->" => ARROW,
+
+    "+" => PLUS,
+    "-" => MINUS,
+    "*" => STAR,
+    "/" => SLASH,
+    "," => COMMA,
+    ":" => COLON,
+    ";" => SEMICOLON,
+
+    "then" => THEN,
+    "true" => TRUE,
+    "false" => FALSE,
+    "nil" => NIL,
+    "_" => WILDCARD,
+} else {
+    r"\w+" => ID,
+    _
+}
