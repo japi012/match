@@ -79,6 +79,17 @@ impl Default for Interpreter {
             }),
         );
         builtins.insert(
+            "readln".into(),
+            Rc::new(|v| {
+                let stdin = std::io::stdin();
+                let mut input = String::new();
+                stdin.read_line(&mut input).unwrap();
+                Ok(input.trim().chars().rfold(v, |acc, x| {
+                    Value::Cons(Box::new(Value::Char(x)), Box::new(acc))
+                }))
+            }),
+        );
+        builtins.insert(
             "error".into(),
             Rc::new(|v| {
                 eprintln!("{v}");
