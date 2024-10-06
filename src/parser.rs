@@ -44,6 +44,9 @@ pub enum Op {
     Divide,
     Then,
     Cons,
+    Greater,
+    Less,
+    Eq,
 }
 
 impl fmt::Display for Op {
@@ -58,6 +61,9 @@ impl fmt::Display for Op {
                 Op::Divide => "divide",
                 Op::Then => "`then`",
                 Op::Cons => "cons",
+                Op::Greater => "compare greater",
+                Op::Less => "compare less",
+                Op::Eq => "compare equal",
             }
         )
     }
@@ -186,7 +192,7 @@ impl<'a> Parser<'a> {
     }
 
     fn cons_expr(&mut self) -> Result<Expr, SyntaxError> {
-        let lhs = self.additive_expr()?;
+        let lhs = self.compare_expr()?;
         Ok(if let Token::Comma = self.lexer.peek_token().1.token {
             let (loc, _) = self.lexer.token();
             Expr::Binary {
@@ -198,6 +204,28 @@ impl<'a> Parser<'a> {
         } else {
             lhs
         })
+    }
+
+    fn compare_expr(&mut self) -> Result<Expr, SyntaxError> {
+        let mut lhs = self.additive_expr()?;
+        while let Token::Greater | Token::Less | Token::Eq = self.lexer.peek_token().1.token {
+            let (loc, op) = self.lexer.token();
+            let op = match op.token {
+                Token::Greater => Op::Greater,
+                Token::Less => Op::Less,
+                Token::Eq => Op::Eq,
+                _ => unreachable!(),
+            };
+            let rhs = self.additive_expr()?;
+            lhs = Expr::Binary {
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+                op,
+                loc,
+            };
+        }
+
+        Ok(lhs)
     }
 
     fn additive_expr(&mut self) -> Result<Expr, SyntaxError> {

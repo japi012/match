@@ -20,6 +20,10 @@ pub enum Token {
     Slash,
     Comma,
 
+    Greater,
+    Less,
+    Eq,
+
     Then,
     Nil,
     True,
@@ -51,6 +55,10 @@ impl fmt::Display for Token {
                 Token::Star => "`*`",
                 Token::Slash => "`/`",
                 Token::Comma => "`,`",
+
+                Token::Greater => "`>`",
+                Token::Less => "`<`",
+                Token::Eq => "`=`",
 
                 Token::Then => "keyword `then`",
                 Token::Nil => "keyword `nil`",
@@ -118,6 +126,9 @@ impl<'a> Lexer<'a> {
             ':' => (index, Lexeme::new(Token::Colon, None)),
             ';' => (index, Lexeme::new(Token::Semicolon, None)),
             ',' => (index, Lexeme::new(Token::Comma, None)),
+            '<' => (index, Lexeme::new(Token::Greater, None)),
+            '>' => (index, Lexeme::new(Token::Less, None)),
+            '=' => (index, Lexeme::new(Token::Eq, None)),
             '-' => {
                 if let Some((_, '>')) = self.peek() {
                     self.chars.next();

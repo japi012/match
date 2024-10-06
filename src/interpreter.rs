@@ -13,6 +13,18 @@ pub enum Value {
     Function(Def),
 }
 
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::Number(lhs), Value::Number(rhs)) => lhs == rhs,
+            (Value::Char(lhs), Value::Char(rhs)) => lhs == rhs,
+            (Value::Bool(lhs), Value::Bool(rhs)) => lhs == rhs,
+            (Value::Cons(ll, lr), Value::Cons(rl, rr)) => ll == rl && lr == rr,
+            _ => false,
+        }
+    }
+}
+
 impl fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
@@ -87,6 +99,16 @@ impl Default for Interpreter {
                 Ok(input.trim().chars().rfold(v, |acc, x| {
                     Value::Cons(Box::new(Value::Char(x)), Box::new(acc))
                 }))
+            }),
+        );
+        builtins.insert(
+            "char".into(),
+            Rc::new(|v| {
+                let Value::Number(v) = v else {
+                    eprintln!("invalid value to coorse into `char`");
+                    return Err(RuntimeError::Explicit(0));
+                };
+                Ok(Value::Char((v.floor() as u8) as char))
             }),
         );
         builtins.insert(
@@ -197,9 +219,18 @@ impl Interpreter {
                             Ok((Value::Number(lhs / rhs), loc))
                         }
                     }
-                    (lhs, rhs, Op::Add | Op::Subtract | Op::Multiply | Op::Divide) => {
-                        Err(RuntimeError::DoesntSupportTypes(lhs, rhs, op, loc))
+                    (Value::Number(lhs), Value::Number(rhs), Op::Greater) => {
+                        Ok((Value::Bool(lhs > rhs), loc))
                     }
+                    (Value::Number(lhs), Value::Number(rhs), Op::Less) => {
+                        Ok((Value::Bool(lhs < rhs), loc))
+                    }
+                    (
+                        lhs,
+                        rhs,
+                        Op::Add | Op::Subtract | Op::Multiply | Op::Divide | Op::Greater | Op::Less,
+                    ) => Err(RuntimeError::DoesntSupportTypes(lhs, rhs, op, loc)),
+                    (lhs, rhs, Op::Eq) => Ok((Value::Bool(lhs == rhs), loc)),
                     (lhs, rhs, Op::Cons) => Ok((Value::Cons(Box::new(lhs), Box::new(rhs)), loc)),
                     (_, rhs, Op::Then) => Ok((rhs, loc)),
                 }
