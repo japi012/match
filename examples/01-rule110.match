@@ -1,0 +1,36 @@
+put:
+    '1', '1', '1' -> '0';
+    '1', '1', '0' -> '1';
+    '1', '0', '1' -> '1';
+    '1', '0', '0' -> '0';
+    '0', '1', '1' -> '1';
+    '0', '1', '0' -> '1';
+    '0', '0', '1' -> '1';
+    '0', '0', '0' -> '0';;
+
+concat:
+    nil, ys -> ys;
+    xs, nil -> xs;
+    (x, xs), ys -> x, concat(xs, ys);;
+
+gen_rule:
+    a, b, nil -> put(a, b, '1'), nil;
+    a, b, c, rest -> put(a, b, c), gen_rule(b, c, rest);;
+
+gen_next:
+    rule -> gen_rule(concat("1", rule));;
+
+do:
+    0, _ -> nil;
+    n, rule -> print_rule(rule) then do(n - 1, gen_next(rule));;
+
+print_rule:
+    x, nil -> println(hash(x));
+    x, xs -> print(hash(x)) then print_rule(xs);;
+
+hash:
+    '0' -> '.';
+    '1' -> '#';;
+
+main:
+    _ -> println(do(100, "00000000000000000000000000000000000000000000"));;
