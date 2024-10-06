@@ -2,7 +2,7 @@
 An esoteric programming language based on functional programming, leaveraging ideas like *pattern matching* and *pairs*.
 
 ## Installation
-The `match` interpreter is just a Rust crate, so you can clone this repo and do `cargo run` to execute it.
+The `match` interpreter is just a Rust crate, so download the Rust compiler. Then you can clone this repo and do `cargo run` to execute it.
 ```
 cargo run -- <filename>
 ```
