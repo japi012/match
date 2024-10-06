@@ -1,4 +1,4 @@
-### `match`
+# `match`
 An esoteric programming language based on functional programming, leaveraging ideas like *pattern matching* and *pairs*.
 
 ## Installation
@@ -9,7 +9,7 @@ cargo run -- <filename>
 The standalone executable can be found at `target/debug/match-lang` after running `cargo build` or `cargo run`.
 
 ## Language
-# Function syntax
+### Function syntax
 A `match` program is made up of *functions*. All functions take one argument, and return one value.
 Functions in `match` is defined by their name followed by a colon and then by a series of pattern branches.
 Each branch consists of a pattern, an `->`, an expression to evaluate, and a `;`. The whole function is terminated by another `;`.
