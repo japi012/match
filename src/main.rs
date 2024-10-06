@@ -1,7 +1,11 @@
-use lalrpop_util::lalrpop_mod;
+use err::{display_runtime_err, display_syntax_err};
+use interpreter::Interpreter;
+use parser::Parser;
 
-mod ast;
-lalrpop_mod!(pub grammar);
+mod err;
+mod interpreter;
+mod lexer;
+mod parser;
 
 use std::{env, fs, process};
 
@@ -16,20 +20,25 @@ fn main() {
                 process::exit(1);
             }
         };
-        let _ = run(src);
+        let mut interpreter = Interpreter::default();
+        let _ = run(src, &mut interpreter, args.collect(), &filename);
     } else {
-        todo!("repl");
+        eprintln!("provide a filepath as an argument");
     }
 }
 
-fn run(src: String) -> Result<(), ()> {
-    let ast = match grammar::ProgramParser::new().parse(&src) {
-        Ok(ast) => ast,
-        Err(e) => {
-            eprintln!("{e}");
-            return Err(());
-        }
-    };
-    println!("{:?}", ast);
+fn run(
+    src: String,
+    interpreter: &mut Interpreter,
+    args: Vec<String>,
+    path: &str,
+) -> Result<(), ()> {
+    let ast = Parser::new(&src)
+        .program()
+        .map_err(|e| eprintln!("{}", display_syntax_err(e, path, &src)))?;
+    interpreter.register(ast);
+    interpreter
+        .run(args)
+        .map_err(|e| eprintln!("{}", display_runtime_err(e, path, &src)))?;
     Ok(())
 }
