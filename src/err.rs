@@ -49,7 +49,8 @@ pub fn display_runtime_err(err: RuntimeError, path: &str, src: &str) -> String {
             | RuntimeError::DoesntSupportTypes(_, _, _, loc)
             | RuntimeError::Explicit(loc)
             | RuntimeError::UndefinedFunc(_, loc)
-            | RuntimeError::UnmatchedValue(_, loc) => loc,
+            | RuntimeError::UnmatchedValue(_, loc)
+            | RuntimeError::GuardIsNotBool(_, loc) => loc,
         },
     );
 
@@ -60,8 +61,9 @@ pub fn display_runtime_err(err: RuntimeError, path: &str, src: &str) -> String {
         RuntimeError::DivisionByZero(_) => "division by zero".to_string(),
         RuntimeError::DoesntSupportTypes(l, r, op, _) => format!("tried to {op} `{l}` and `{r}`."),
         RuntimeError::Explicit(_) => "explicit".to_string(),
-        RuntimeError::UndefinedFunc(n, _) => format!("undefined variable {n}"),
+        RuntimeError::UndefinedFunc(n, _) => format!("undefined variable `{n}`"),
         RuntimeError::UnmatchedValue(v, _) => format!("unmatched value `{v}`"),
+        RuntimeError::GuardIsNotBool(v, _) => format!("guard should be a boolean, got `{v}`"),
     });
     displayed
 }

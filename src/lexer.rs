@@ -18,6 +18,7 @@ pub enum Token {
     Minus,
     Star,
     Slash,
+    Percent,
     Comma,
 
     Greater,
@@ -54,6 +55,7 @@ impl fmt::Display for Token {
                 Token::Minus => "`-`",
                 Token::Star => "`*`",
                 Token::Slash => "`/`",
+                Token::Percent => "`%`",
                 Token::Comma => "`,`",
 
                 Token::Greater => "`>`",
@@ -140,6 +142,7 @@ impl<'a> Lexer<'a> {
             '+' => (index, Lexeme::new(Token::Plus, None)),
             '*' => (index, Lexeme::new(Token::Star, None)),
             '/' => (index, Lexeme::new(Token::Slash, None)),
+            '%' => (index, Lexeme::new(Token::Percent, None)),
             '"' => {
                 let mut last = index + 1;
                 while self.peek().is_some_and(|(_, c)| c != '"') {

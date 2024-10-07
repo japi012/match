@@ -9,11 +9,17 @@ pub struct Def {
 }
 
 #[derive(Debug, Clone)]
-pub enum Pattern {
+pub struct Pattern {
+    pub src: PatternSource,
+    pub guard: Option<Expr>,
+}
+
+#[derive(Debug, Clone)]
+pub enum PatternSource {
     Number(f64),
     Char(char),
     Named(String),
-    Cons(Box<Pattern>, Box<Pattern>),
+    Cons(Box<PatternSource>, Box<PatternSource>),
     Wildcard,
     Bool(bool),
     Nil,
@@ -42,6 +48,7 @@ pub enum Op {
     Subtract,
     Multiply,
     Divide,
+    Modulo,
     Then,
     Cons,
     Greater,
@@ -59,6 +66,7 @@ impl fmt::Display for Op {
                 Op::Subtract => "subtract",
                 Op::Multiply => "multiply",
                 Op::Divide => "divide",
+                Op::Modulo => "modulo",
                 Op::Then => "`then`",
                 Op::Cons => "cons",
                 Op::Greater => "compare greater",
@@ -133,27 +141,44 @@ impl<'a> Parser<'a> {
     }
 
     fn pattern(&mut self) -> Result<Pattern, SyntaxError> {
+        let pat = self.cons_pattern()?;
+        if let Token::Colon = self.lexer.peek_token().1.token {
+            self.lexer.token();
+            let guard = self.expr()?;
+            Ok(Pattern {
+                src: pat,
+                guard: Some(guard),
+            })
+        } else {
+            Ok(Pattern {
+                src: pat,
+                guard: None,
+            })
+        }
+    }
+
+    fn cons_pattern(&mut self) -> Result<PatternSource, SyntaxError> {
         let lhs = self.primary_pattern()?;
         Ok(if let Token::Comma = self.lexer.peek_token().1.token {
             self.lexer.token();
-            Pattern::Cons(Box::new(lhs), Box::new(self.pattern()?))
+            PatternSource::Cons(Box::new(lhs), Box::new(self.cons_pattern()?))
         } else {
             lhs
         })
     }
 
-    fn primary_pattern(&mut self) -> Result<Pattern, SyntaxError> {
+    fn primary_pattern(&mut self) -> Result<PatternSource, SyntaxError> {
         let (loc, tk) = self.lexer.token();
         Ok(match tk.token {
-            Token::Char => Pattern::Char(tk.lexeme.unwrap().chars().next().unwrap()),
-            Token::Nil => Pattern::Nil,
-            Token::True => Pattern::Bool(true),
-            Token::False => Pattern::Bool(false),
-            Token::Number => Pattern::Number(tk.lexeme.unwrap().parse().unwrap()),
-            Token::Wildcard => Pattern::Wildcard,
-            Token::Word => Pattern::Named(tk.lexeme.unwrap()),
+            Token::Char => PatternSource::Char(tk.lexeme.unwrap().chars().next().unwrap()),
+            Token::Nil => PatternSource::Nil,
+            Token::True => PatternSource::Bool(true),
+            Token::False => PatternSource::Bool(false),
+            Token::Number => PatternSource::Number(tk.lexeme.unwrap().parse().unwrap()),
+            Token::Wildcard => PatternSource::Wildcard,
+            Token::Word => PatternSource::Named(tk.lexeme.unwrap()),
             Token::LeftParen => {
-                let pattern = self.pattern()?;
+                let pattern = self.cons_pattern()?;
                 self.expect(Token::RightParen)?;
                 pattern
             }
@@ -251,11 +276,12 @@ impl<'a> Parser<'a> {
 
     fn term(&mut self) -> Result<Expr, SyntaxError> {
         let mut lhs = self.call()?;
-        while let Token::Star | Token::Slash = self.lexer.peek_token().1.token {
+        while let Token::Star | Token::Slash | Token::Percent = self.lexer.peek_token().1.token {
             let (loc, op) = self.lexer.token();
             let op = match op.token {
                 Token::Star => Op::Multiply,
                 Token::Slash => Op::Divide,
+                Token::Percent => Op::Modulo,
                 _ => unreachable!(),
             };
             let rhs = self.call()?;

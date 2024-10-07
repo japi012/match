@@ -1,4 +1,4 @@
-use crate::parser::{Def, Expr, Op, Pattern};
+use crate::parser::{Def, Expr, Op, Pattern, PatternSource};
 use std::{collections::HashMap, fmt, rc::Rc};
 
 #[derive(Clone)]
@@ -60,6 +60,7 @@ pub enum RuntimeError {
     DivisionByZero(usize),
     UnmatchedValue(Value, usize),
     Explicit(usize),
+    GuardIsNotBool(Value, usize),
 }
 
 type Builtins = HashMap<Box<str>, Rc<dyn Fn(Value) -> Result<Value, RuntimeError>>>;
@@ -213,6 +214,9 @@ impl Interpreter {
                     (Value::Number(lhs), Value::Number(rhs), Op::Multiply) => {
                         Ok((Value::Number(lhs * rhs), loc))
                     }
+                    (Value::Number(lhs), Value::Number(rhs), Op::Modulo) => {
+                        Ok((Value::Number(lhs % rhs), loc))
+                    }
                     (Value::Number(lhs), Value::Number(rhs), Op::Divide) => {
                         if rhs == 0. {
                             Err(RuntimeError::DivisionByZero(loc))
@@ -229,7 +233,13 @@ impl Interpreter {
                     (
                         lhs,
                         rhs,
-                        Op::Add | Op::Subtract | Op::Multiply | Op::Divide | Op::Greater | Op::Less,
+                        Op::Add
+                        | Op::Subtract
+                        | Op::Multiply
+                        | Op::Divide
+                        | Op::Modulo
+                        | Op::Greater
+                        | Op::Less,
                     ) => Err(RuntimeError::DoesntSupportTypes(lhs, rhs, op, loc)),
                     (lhs, rhs, Op::Eq) => Ok((Value::Bool(lhs == rhs), loc)),
                     (lhs, rhs, Op::Cons) => Ok((Value::Cons(Box::new(lhs), Box::new(rhs)), loc)),
@@ -267,7 +277,7 @@ impl Interpreter {
         let saved = self.locals.clone();
         let mut matched = None;
         for (pat, expr) in branches {
-            if self.apply_pattern(value.clone(), pat) {
+            if self.apply_pattern(value.clone(), pat)? {
                 matched = Some(expr);
                 break;
             }
@@ -281,22 +291,48 @@ impl Interpreter {
         }
     }
 
-    fn apply_pattern(&mut self, val: Value, pat: Pattern) -> bool {
-        match (val, pat) {
-            (v, Pattern::Named(n)) => {
+    fn apply_pattern(&mut self, val: Value, pat: Pattern) -> Result<bool, RuntimeError> {
+        let Pattern { src, guard } = pat;
+        let res = match (val, src) {
+            (v, PatternSource::Named(n)) => {
                 self.locals.insert(n.into(), v);
                 true
             }
-            (_, Pattern::Wildcard) => true,
-            (Value::Nil, Pattern::Nil) => true,
-            (Value::Number(n1), Pattern::Number(n2)) => n1 == n2,
-            (Value::Bool(b1), Pattern::Bool(b2)) => b1 == b2,
-            (Value::Char(c1), Pattern::Char(c2)) => c1 == c2,
-            (Value::Cons(v1, v2), Pattern::Cons(p1, p2)) => {
-                let p = self.apply_pattern(*v1, *p1);
-                p && self.apply_pattern(*v2, *p2)
+            (_, PatternSource::Wildcard) => true,
+            (Value::Nil, PatternSource::Nil) => true,
+            (Value::Number(n1), PatternSource::Number(n2)) => n1 == n2,
+            (Value::Bool(b1), PatternSource::Bool(b2)) => b1 == b2,
+            (Value::Char(c1), PatternSource::Char(c2)) => c1 == c2,
+            (Value::Cons(v1, v2), PatternSource::Cons(p1, p2)) => {
+                let p = self.apply_pattern(
+                    *v1,
+                    Pattern {
+                        src: *p1,
+                        guard: None,
+                    },
+                )?;
+                p && self.apply_pattern(
+                    *v2,
+                    Pattern {
+                        src: *p2,
+                        guard: None,
+                    },
+                )?
             }
             _ => false,
-        }
+        };
+        Ok(if guard.is_some() && res {
+            let guard = guard.unwrap();
+            let (value, loc) = self.eval_expr(guard)?;
+            if value == Value::Bool(true) {
+                true
+            } else if value == Value::Bool(false) {
+                false
+            } else {
+                return Err(RuntimeError::GuardIsNotBool(value, loc));
+            }
+        } else {
+            res
+        })
     }
 }
