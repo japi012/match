@@ -1,3 +1,4 @@
+use std::path::Path;
 use crate::{interpreter::RuntimeError, parser::SyntaxError};
 
 fn line_and_column(src: &str, pos: usize) -> (usize, usize) {
@@ -21,21 +22,26 @@ fn line_and_column(src: &str, pos: usize) -> (usize, usize) {
     (line, column)
 }
 
-pub fn display_syntax_err(err: SyntaxError, path: &str, src: &str) -> String {
+pub fn display_syntax_err(err: SyntaxError, path: &Path, src: &str) -> String {
     let (line, column) = line_and_column(
         src,
         match err {
-            SyntaxError::Expected { loc, .. } | SyntaxError::Unexpected(_, loc) => loc,
+            SyntaxError::Expected { loc, .. }
+            | SyntaxError::Unexpected(_, loc)
+            | SyntaxError::CouldntFindInclude(_, loc) => loc,
         },
     );
 
     let mut displayed = String::new();
-    displayed.push_str(&format!("{path}:{line}:{column}: syntax error: "));
+    displayed.push_str(&format!("{}:{line}:{column}: syntax error: ", path.display()));
     displayed.push_str(&match err {
         SyntaxError::Expected {
             expected, found, ..
         } => format!("expected {expected}, found {}", found.token),
         SyntaxError::Unexpected(lexeme, _) => format!("unexpected {}", lexeme.token),
+        SyntaxError::CouldntFindInclude(filename, _) => {
+            format!("couldn't find file `{}`", filename.display())
+        }
     });
     displayed
 }

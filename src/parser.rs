@@ -1,6 +1,39 @@
-use std::fmt;
+use std::{
+    fmt, fs,
+    path::{self, PathBuf},
+};
 
 use crate::lexer::{Lexeme, Lexer, Token};
+
+#[derive(Debug, Clone)]
+pub struct Program {
+    pub defs: Vec<Def>,
+    pub includes: Vec<(PathBuf, usize)>,
+}
+
+impl Program {
+    pub fn flatten_includes(
+        self,
+        path: PathBuf,
+        opened_files: &mut Vec<PathBuf>,
+    ) -> Result<Vec<Def>, (PathBuf, SyntaxError)> {
+        let mut new_defs = self.defs;
+        for (include, loc) in self.includes {
+            if !opened_files.contains(&include) {
+                let Ok(src) = fs::read_to_string(&include) else {
+                    return Err((path, SyntaxError::CouldntFindInclude(include.into(), loc)));
+                };
+                let absolute = path::absolute(&include)
+                    .unwrap_or_else(|_| panic!("couldn't find absolute path"));
+                opened_files.push(absolute);
+                let program = Parser::new(&src).program().map_err(|e| (include.clone(), e))?;
+                let mut defs = program.flatten_includes(include, opened_files)?;
+                new_defs.append(&mut defs);
+            }
+        }
+        Ok(new_defs)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Def {
@@ -85,6 +118,7 @@ pub enum SyntaxError {
         loc: usize,
     },
     Unexpected(Lexeme, usize),
+    CouldntFindInclude(PathBuf, usize),
 }
 
 pub struct Parser<'a> {
@@ -111,12 +145,20 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn program(&mut self) -> Result<Vec<Def>, SyntaxError> {
-        let mut program = Vec::new();
+    pub fn program(&mut self) -> Result<Program, SyntaxError> {
+        let mut defs = Vec::new();
+        let mut includes = Vec::new();
         while self.lexer.peek_token().1.token != Token::Eof {
-            program.push(self.def()?);
+            if let Token::Include = self.lexer.peek_token().1.token {
+                self.lexer.token();
+                let (loc, string) = self.expect(Token::String)?;
+                let filename = &string.lexeme.unwrap()[1..];
+                includes.push((filename.into(), loc));
+            } else {
+                defs.push(self.def()?);
+            }
         }
-        Ok(program)
+        Ok(Program { defs, includes })
     }
 
     fn def(&mut self) -> Result<Def, SyntaxError> {

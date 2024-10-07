@@ -7,7 +7,7 @@ mod interpreter;
 mod lexer;
 mod parser;
 
-use std::{env, fs, process};
+use std::{env, fs, process, path::Path};
 
 fn main() {
     let mut args = env::args();
@@ -33,9 +33,11 @@ fn run(
     args: Vec<String>,
     path: &str,
 ) -> Result<(), ()> {
-    let ast = Parser::new(&src)
+    let program = Parser::new(&src)
         .program()
-        .map_err(|e| eprintln!("{}", display_syntax_err(e, path, &src)))?;
+        .map(|p| p.flatten_includes(Path::new(path).to_owned(), &mut Vec::new()))
+        .map_err(|e| eprintln!("{}", display_syntax_err(e, Path::new(path), &src)))?;
+    let ast = program.map_err(|(p, e)| eprintln!("{}", display_syntax_err(e, &p, &src)))?;
     interpreter.register(ast);
     interpreter
         .run(args)

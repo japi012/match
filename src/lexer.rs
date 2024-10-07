@@ -29,6 +29,7 @@ pub enum Token {
     Nil,
     True,
     False,
+    Include,
 
     Eof,
 }
@@ -66,6 +67,7 @@ impl fmt::Display for Token {
                 Token::Nil => "keyword `nil`",
                 Token::True => "keyword `true`",
                 Token::False => "keyword `false`",
+                Token::Include => "keyword `include`",
 
                 Token::Eof => "end of file",
             }
@@ -208,6 +210,7 @@ impl<'a> Lexer<'a> {
                         "true" => Lexeme::new(Token::True, None),
                         "false" => Lexeme::new(Token::False, None),
                         "nil" => Lexeme::new(Token::Nil, None),
+                        "include" => Lexeme::new(Token::Include, None),
                         "_" => Lexeme::new(Token::Wildcard, None),
                         _ => Lexeme::new(Token::Word, Some(self.src[index..last].to_string())),
                     },
