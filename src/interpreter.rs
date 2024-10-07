@@ -19,6 +19,7 @@ impl PartialEq for Value {
             (Value::Number(lhs), Value::Number(rhs)) => lhs == rhs,
             (Value::Char(lhs), Value::Char(rhs)) => lhs == rhs,
             (Value::Bool(lhs), Value::Bool(rhs)) => lhs == rhs,
+            (Value::Nil, Value::Nil) => true,
             (Value::Cons(ll, lr), Value::Cons(rl, rr)) => ll == rl && lr == rr,
             _ => false,
         }
