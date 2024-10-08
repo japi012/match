@@ -119,9 +119,9 @@ impl<'a> Lexer<'a> {
             while self.peek().is_some_and(|(_, c)| c != '\n') {
                 self.chars.next();
             }
-        }
-        while self.peek().is_some_and(|(_, c)| c.is_whitespace()) {
-            self.chars.next();
+            while self.peek().is_some_and(|(_, c)| c.is_whitespace()) {
+                self.chars.next();
+            }
         }
     }
 
