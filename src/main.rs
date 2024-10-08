@@ -7,7 +7,7 @@ mod interpreter;
 mod lexer;
 mod parser;
 
-use std::{env, fs, process, path::Path};
+use std::{env, fs, path::Path, process};
 
 fn main() {
     let mut args = env::args();

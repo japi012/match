@@ -121,6 +121,35 @@ impl Default for Interpreter {
             }),
         );
         builtins.insert(
+            "parse".into(),
+            Rc::new(|mut v| {
+                let mut string = String::new();
+
+                loop {
+                    match v {
+                        Value::Nil => break,
+                        Value::Cons(x, y) => {
+                            let Value::Char(x) = *x else {
+                                eprintln!("cannot parse non characters: `{x}`");
+                                return Err(RuntimeError::Explicit(0));
+                            };
+                            string.push(x);
+                            v = *y;
+                        }
+                        v => {
+                            eprintln!("cannot parse non characters: `{v}`");
+                            return Err(RuntimeError::Explicit(0));
+                        }
+                    }
+                }
+
+                string.parse::<f64>().map(Value::Number).map_err(|e| {
+                    eprintln!("error while parsing: {e}");
+                    RuntimeError::Explicit(0)
+                })
+            }),
+        );
+        builtins.insert(
             "type".into(),
             Rc::new(|v| {
                 Ok(match v {

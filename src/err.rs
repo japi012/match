@@ -1,5 +1,5 @@
-use std::path::Path;
 use crate::{interpreter::RuntimeError, parser::SyntaxError};
+use std::path::Path;
 
 fn line_and_column(src: &str, pos: usize) -> (usize, usize) {
     let mut line = 1;
@@ -33,7 +33,10 @@ pub fn display_syntax_err(err: SyntaxError, path: &Path, src: &str) -> String {
     );
 
     let mut displayed = String::new();
-    displayed.push_str(&format!("{}:{line}:{column}: syntax error: ", path.display()));
+    displayed.push_str(&format!(
+        "{}:{line}:{column}: syntax error: ",
+        path.display()
+    ));
     displayed.push_str(&match err {
         SyntaxError::Expected {
             expected, found, ..

@@ -21,12 +21,14 @@ impl Program {
         for (include, loc) in self.includes {
             if !opened_files.contains(&include) {
                 let Ok(src) = fs::read_to_string(&include) else {
-                    return Err((path, SyntaxError::CouldntFindInclude(include.into(), loc)));
+                    return Err((path, SyntaxError::CouldntFindInclude(include, loc)));
                 };
                 let absolute = path::absolute(&include)
                     .unwrap_or_else(|_| panic!("couldn't find absolute path"));
                 opened_files.push(absolute);
-                let program = Parser::new(&src).program().map_err(|e| (include.clone(), e))?;
+                let program = Parser::new(&src)
+                    .program()
+                    .map_err(|e| (include.clone(), e))?;
                 let mut defs = program.flatten_includes(include, opened_files)?;
                 new_defs.append(&mut defs);
             }
