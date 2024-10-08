@@ -112,6 +112,12 @@ impl<'a> Lexer<'a> {
     }
 
     fn skip_whitespace(&mut self) {
+        while self.peek().is_some_and(|(_, c)| c == '#') {
+            while self.peek().is_some_and(|(_, c)| c != '\n') {
+                self.chars.next();
+            }
+            self.chars.next();
+        }
         while self.peek().is_some_and(|(_, c)| c.is_whitespace()) {
             self.chars.next();
         }
@@ -192,7 +198,7 @@ impl<'a> Lexer<'a> {
 
             _ => {
                 let mut last = index + 1;
-                const SPECIAL: &str = "+->*/():,;";
+                const SPECIAL: &str = "+->*/&<=#():,;";
                 while self
                     .peek()
                     .is_some_and(|(_, c)| !c.is_whitespace() && !SPECIAL.contains(c))
